@@ -1,9 +1,6 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "npm install && npm run build"
-
-[build.nixpacksPlan.phases.setup]
-nixPkgs = ["nodejs_20", "python3"]
+buildCommand = "npm ci --include=dev && npm run build"
 
 [deploy]
 startCommand = "npm start"

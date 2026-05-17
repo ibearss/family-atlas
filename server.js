@@ -7,10 +7,13 @@ import { dirname, join } from 'path';
 import { mkdirSync, unlinkSync } from 'fs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const UPLOADS_DIR = join(__dirname, 'uploads');
+
+// DATA_DIR: set this env var in Railway to point at a persistent volume (e.g. /data)
+const DATA_DIR = process.env.DATA_DIR || __dirname;
+const UPLOADS_DIR = join(DATA_DIR, 'uploads');
 mkdirSync(UPLOADS_DIR, { recursive: true });
 
-const db = new Database(join(__dirname, 'pins.db'));
+const db = new Database(join(DATA_DIR, 'pins.db'));
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS pins (
@@ -68,7 +71,8 @@ function normalizePinInput(body = {}) {
   return { value: { name, place, type, lat, lon, notes } };
 }
 
-// Pins
+// --- API routes ---
+
 app.get('/api/pins', (req, res) => {
   const pins = db.prepare(`
     SELECT p.*, COUNT(ph.id) AS photo_count
@@ -93,10 +97,15 @@ app.post('/api/pins', (req, res) => {
 app.delete('/api/pins/:id', (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'Invalid id.' });
-  // Delete associated photo files first
   const photos = db.prepare('SELECT filename FROM photos WHERE pin_id = ?').all(id);
   for (const p of photos) {
-    try { unlinkSync(join(UPLOADS_DIR, p.filename)); } catch {}
+    try {
+      unlinkSync(join(UPLOADS_DIR, p.filename));
+    } catch (error) {
+      if (error?.code !== 'ENOENT') {
+        console.error(error);
+      }
+    }
   }
   const result = db.prepare('DELETE FROM pins WHERE id = ?').run(id);
   if (result.changes === 0) return res.status(404).json({ error: 'Pin not found.' });
@@ -104,7 +113,6 @@ app.delete('/api/pins/:id', (req, res) => {
   res.json({ ok: true });
 });
 
-// Photos
 app.get('/api/pins/:id/photos', (req, res) => {
   const photos = db.prepare('SELECT * FROM photos WHERE pin_id = ? ORDER BY created_at ASC').all(req.params.id);
   res.json(photos);
@@ -125,13 +133,18 @@ app.post('/api/pins/:id/photos', upload.array('photos', 20), (req, res) => {
 app.delete('/api/photos/:id', (req, res) => {
   const photo = db.prepare('SELECT * FROM photos WHERE id = ?').get(req.params.id);
   if (!photo) return res.status(404).json({ error: 'Not found.' });
-  try { unlinkSync(join(UPLOADS_DIR, photo.filename)); } catch {}
+  try {
+    unlinkSync(join(UPLOADS_DIR, photo.filename));
+  } catch (error) {
+    if (error?.code !== 'ENOENT') {
+      console.error(error);
+    }
+  }
   db.prepare('DELETE FROM photos WHERE id = ?').run(req.params.id);
   broadcast({ type: 'photo_remove', pinId: photo.pin_id });
   res.json({ ok: true });
 });
 
-// SSE
 app.get('/api/events', (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
@@ -146,6 +159,22 @@ function broadcast(data) {
   for (const client of clients) client.write(payload);
 }
 
+// --- Static frontend ---
+// Must come after API routes but before error handler
+if (process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT) {
+  const DIST = join(__dirname, 'dist');
+  app.use(express.static(DIST));
+  // SPA catch-all: serve index.html for any unmatched GET
+  app.use((req, res, next) => {
+    if (req.method === 'GET') {
+      res.sendFile(join(DIST, 'index.html'));
+    } else {
+      next();
+    }
+  });
+}
+
+// --- Error handler (must be last) ---
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
   if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
@@ -154,13 +183,6 @@ app.use((err, req, res, next) => {
   console.error(err);
   res.status(500).json({ error: 'Internal server error.' });
 });
-
-// Serve Vite build in production
-if (process.env.NODE_ENV === 'production') {
-  const DIST = join(__dirname, 'dist');
-  app.use(express.static(DIST));
-  app.get('*', (req, res) => res.sendFile(join(DIST, 'index.html')));
-}
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`API running on http://localhost:${PORT}`));
