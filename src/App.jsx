@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import WorldMap from './WorldMap';
 import PinModal from './PinModal';
+import DropPinModal from './DropPinModal';
 import { nameToColor } from './colors';
 
 const LS_NAME_KEY = 'family-atlas-name';
@@ -22,6 +23,8 @@ function usePins() {
         setPins(prev => prev.some(p => p.id === msg.pin.id) ? prev : [...prev, msg.pin]);
       } else if (msg.type === 'remove') {
         setPins(prev => prev.filter(p => p.id !== msg.id));
+      } else if (msg.type === 'edit') {
+        setPins(prev => prev.map(p => p.id === msg.pin.id ? msg.pin : p));
       } else if (msg.type === 'photo_add') {
         setPins(prev => prev.map(p => p.id === msg.pinId ? { ...p, photo_count: (p.photo_count || 0) + 1 } : p));
       } else if (msg.type === 'photo_remove') {
@@ -43,6 +46,18 @@ function usePins() {
     return saved;
   }, []);
 
+  const editPin = useCallback(async (id, updates) => {
+    const res = await fetch(`/api/pins/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+    if (!res.ok) throw new Error('Failed to update pin');
+    const updated = await res.json();
+    setPins(prev => prev.map(p => p.id === id ? updated : p));
+    return updated;
+  }, []);
+
   const removePin = useCallback(async (id) => {
     const prev = pins;
     setPins(p => p.filter(x => x.id !== id));
@@ -58,43 +73,54 @@ function usePins() {
     fetch('/api/pins').then(r => r.json()).then(setPins).catch(console.error);
   }, []);
 
-  return { pins, addPin, removePin, refreshPhotoCounts };
+  return { pins, addPin, editPin, removePin, refreshPhotoCounts };
 }
 
 export default function App() {
   const [name, setName] = useState(() => localStorage.getItem(LS_NAME_KEY) || '');
-  const [place, setPlace] = useState('');
-  const [notes, setNotes] = useState('');
-  const [pinType, setPinType] = useState('home');
   const [filterPerson, setFilterPerson] = useState('all');
   const [pendingCoords, setPendingCoords] = useState(null);
-  const [dropping, setDropping] = useState(false);
+  const [dropModalOpen, setDropModalOpen] = useState(false);
   const [selectedPin, setSelectedPin] = useState(null);
-  const [formOpen, setFormOpen] = useState(true);
 
-  const { pins, addPin, removePin, refreshPhotoCounts } = usePins();
+  const { pins, addPin, editPin, removePin, refreshPhotoCounts } = usePins();
 
+  // Keep selectedPin in sync with the pins array (handles edits from other sessions)
   useEffect(() => {
-    if (name) localStorage.setItem(LS_NAME_KEY, name);
-  }, [name]);
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    if (!name.trim() || !place.trim() || !pendingCoords || dropping) return;
-    setDropping(true);
-    try {
-      await addPin({ name: name.trim(), place: place.trim(), notes: notes.trim(), type: pinType, lat: pendingCoords.lat, lon: pendingCoords.lon });
-      setPlace('');
-      setNotes('');
-      setPendingCoords(null);
-    } finally {
-      setDropping(false);
-    }
-  }
+    if (!selectedPin) return;
+    const updated = pins.find(p => p.id === selectedPin.id);
+    if (updated) setSelectedPin(updated);
+    else setSelectedPin(null);
+  }, [pins]);
 
   const people = [...new Set(pins.map(p => p.name))].sort();
   const visiblePins = filterPerson === 'all' ? pins : pins.filter(p => p.name === filterPerson);
-  const canDrop = name.trim() && place.trim() && pendingCoords;
+
+  function handleMapClick(coords) {
+    setPendingCoords(coords);
+    setDropModalOpen(true);
+  }
+
+  function closeDropModal() {
+    setDropModalOpen(false);
+    setPendingCoords(null);
+  }
+
+  async function handleDropConfirm(pinData) {
+    await addPin(pinData);
+    localStorage.setItem(LS_NAME_KEY, pinData.name);
+    setName(pinData.name);
+    closeDropModal();
+  }
+
+  async function handleDeletePin(id) {
+    setSelectedPin(null);
+    await removePin(id);
+  }
+
+  async function handleEditPin(id, updates) {
+    await editPin(id, updates);
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: '#13100d', color: '#f0e3c4' }}>
@@ -141,94 +167,43 @@ export default function App() {
           </div>
         )}
 
-        {/* Form toggle on mobile */}
-        <button
-          onClick={() => setFormOpen(o => !o)}
-          style={{
-            display: 'none', width: '100%', marginBottom: 10,
-            padding: '11px', borderRadius: 8,
-            background: 'rgba(212,168,67,0.1)', border: '1px solid rgba(212,168,67,0.25)',
-            color: '#d4a843', fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-          }}
-          className="form-toggle"
-        >
-          {formOpen ? '▲ Hide Form' : '▼ Drop a Pin'}
-        </button>
+        {/* Controls bar */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+          <button
+            onClick={() => setDropModalOpen(true)}
+            style={{
+              padding: '8px 18px', borderRadius: 8, fontSize: 13, fontWeight: 700,
+              fontFamily: 'Inter, sans-serif', border: 'none', cursor: 'pointer',
+              background: 'linear-gradient(135deg, #c9a84c, #8b6030)',
+              color: '#13100d', transition: 'opacity 0.15s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+            onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+          >
+            + Drop a Pin
+          </button>
 
-        {/* Form */}
-        <div style={{
-          background: 'rgba(255,255,255,0.04)',
-          border: '1px solid rgba(212,168,67,0.15)',
-          borderRadius: 12, padding: 'clamp(14px, 3vw, 22px)',
-          marginBottom: 16,
-          display: formOpen ? 'block' : 'none',
-        }} className="form-card">
-          <form onSubmit={handleSubmit}>
-            {/* Row 1: name, place, type, submit */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end', marginBottom: 10 }}>
-              <Field label="Your Name">
-                <input value={name} onChange={e => setName(e.target.value)}
-                  placeholder="e.g. Grandma Rose" style={{ ...iStyle, width: 'clamp(130px, 18vw, 170px)' }} />
-              </Field>
-              <Field label="Place Name">
-                <input value={place} onChange={e => setPlace(e.target.value)}
-                  placeholder="e.g. Paris, France" style={{ ...iStyle, width: 'clamp(150px, 20vw, 200px)' }} />
-              </Field>
-              <Field label="Type">
-                <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(212,168,67,0.25)' }}>
-                  {['home', 'travel'].map(t => (
-                    <button key={t} type="button" onClick={() => setPinType(t)} style={{
-                      padding: '9px 14px', fontSize: 12, fontWeight: 600,
-                      fontFamily: 'Inter, sans-serif', border: 'none', cursor: 'pointer',
-                      background: pinType === t ? (t === 'home' ? '#a02828' : '#1a5c9a') : 'transparent',
-                      color: pinType === t ? 'white' : 'rgba(240,227,196,0.45)',
-                      transition: 'all 0.15s', whiteSpace: 'nowrap',
-                    }}>
-                      {t === 'home' ? '🏠 Home' : '✈ Travel'}
-                    </button>
-                  ))}
-                </div>
-              </Field>
-              <Field label={pendingCoords ? `${pendingCoords.lat}°, ${pendingCoords.lon}°` : 'Click globe first'}>
-                <button type="submit" disabled={!canDrop || dropping} style={{
-                  padding: '9px 20px', borderRadius: 8, fontSize: 13, fontWeight: 700,
-                  fontFamily: 'Inter, sans-serif', border: 'none',
-                  cursor: canDrop ? 'pointer' : 'not-allowed',
-                  background: canDrop ? 'linear-gradient(135deg, #c9a84c, #8b6030)' : 'rgba(255,255,255,0.07)',
-                  color: canDrop ? '#13100d' : 'rgba(240,227,196,0.25)',
-                  transition: 'all 0.2s', whiteSpace: 'nowrap',
-                }}>
-                  {dropping ? 'Dropping...' : 'Drop Pin'}
-                </button>
-              </Field>
-              {people.length > 0 && (
-                <Field label="Show" style={{ marginLeft: 'auto' }}>
-                  <select value={filterPerson} onChange={e => setFilterPerson(e.target.value)}
-                    style={{ ...iStyle, width: 140 }}>
-                    <option value="all">Everyone</option>
-                    {people.map(p => <option key={p} value={p}>{p}</option>)}
-                  </select>
-                </Field>
-              )}
+          {people.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <label style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: 600, color: 'rgba(212,168,67,0.55)', textTransform: 'uppercase', letterSpacing: 1.2 }}>
+                Show
+              </label>
+              <select value={filterPerson} onChange={e => setFilterPerson(e.target.value)} style={{
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(212,168,67,0.2)',
+                borderRadius: 8, padding: '7px 11px',
+                fontSize: 13, fontFamily: 'Inter, sans-serif',
+                color: '#f0e3c4',
+              }}>
+                <option value="all">Everyone</option>
+                {people.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
             </div>
-            {/* Row 2: optional notes */}
-            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-              <textarea
-                value={notes} onChange={e => setNotes(e.target.value)}
-                placeholder="Add a memory or note (optional) — 'We got married here', 'Dad grew up two blocks away'..."
-                rows={2}
-                style={{
-                  ...iStyle, flex: 1, resize: 'vertical', minHeight: 44,
-                  fontFamily: 'EB Garamond, serif', fontSize: 14, fontStyle: notes ? 'normal' : 'italic',
-                  lineHeight: 1.5,
-                }}
-              />
-            </div>
-          </form>
+          )}
         </div>
 
         {/* Globe */}
-        <WorldMap pins={visiblePins} onMapClick={setPendingCoords} pinType={pinType} pendingCoords={pendingCoords} onPinClick={setSelectedPin} />
+        <WorldMap pins={visiblePins} onMapClick={handleMapClick} pendingCoords={pendingCoords} onPinClick={setSelectedPin} />
 
         {/* Legend */}
         <div style={{ display: 'flex', gap: 16, marginTop: 10, justifyContent: 'center', flexWrap: 'wrap', fontFamily: 'EB Garamond, serif', color: 'rgba(240,227,196,0.4)', fontSize: 13 }}>
@@ -238,7 +213,7 @@ export default function App() {
           <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
             <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#2a80cc', display: 'inline-block' }} /> Travel
           </span>
-          <span style={{ fontStyle: 'italic' }}>Click globe · scroll to zoom · drag to rotate</span>
+          <span style={{ fontStyle: 'italic' }}>Click globe or use button to drop a pin · scroll to zoom · drag to rotate</span>
         </div>
 
         {/* Pin list */}
@@ -273,8 +248,7 @@ export default function App() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 11, minWidth: 0 }}>
                       <div style={{
                         width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
-                        background: `${personColor}22`,
-                        border: `2px solid ${personColor}`,
+                        background: `${personColor}22`, border: `2px solid ${personColor}`,
                         display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15,
                       }}>
                         {pin.type === 'home' ? '🏠' : '✈'}
@@ -319,37 +293,28 @@ export default function App() {
         )}
       </main>
 
+      {dropModalOpen && (
+        <DropPinModal
+          coords={pendingCoords}
+          defaultName={name}
+          onConfirm={handleDropConfirm}
+          onCancel={closeDropModal}
+        />
+      )}
+
       {selectedPin && (
-        <PinModal pin={selectedPin} onClose={() => setSelectedPin(null)} onPhotoChange={refreshPhotoCounts} />
+        <PinModal
+          pin={selectedPin}
+          onClose={() => setSelectedPin(null)}
+          onPhotoChange={refreshPhotoCounts}
+          onDelete={handleDeletePin}
+          onEdit={handleEditPin}
+        />
       )}
 
       <style>{`
-        @media (max-width: 600px) {
-          .form-toggle { display: block !important; }
-        }
-        input::placeholder, textarea::placeholder { color: rgba(240,227,196,0.25); }
-        input:focus, textarea:focus, select:focus { outline: none; border-color: rgba(212,168,67,0.5) !important; }
         select option { background: #1a160f; color: #f0e3c4; }
       `}</style>
     </div>
   );
 }
-
-function Field({ label, children, style }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, ...style }}>
-      <label style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: 600, color: 'rgba(212,168,67,0.55)', textTransform: 'uppercase', letterSpacing: 1.2 }}>
-        {label}
-      </label>
-      {children}
-    </div>
-  );
-}
-
-const iStyle = {
-  background: 'rgba(255,255,255,0.05)',
-  border: '1px solid rgba(212,168,67,0.2)',
-  borderRadius: 8, padding: '9px 11px',
-  fontSize: 13, fontFamily: 'Inter, sans-serif',
-  color: '#f0e3c4',
-};

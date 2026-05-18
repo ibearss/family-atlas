@@ -94,6 +94,24 @@ app.post('/api/pins', (req, res) => {
   res.status(201).json(pin);
 });
 
+app.patch('/api/pins/:id', (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'Invalid id.' });
+  const existing = db.prepare('SELECT * FROM pins WHERE id = ?').get(id);
+  if (!existing) return res.status(404).json({ error: 'Pin not found.' });
+  const parsed = normalizePinInput({ ...existing, ...req.body });
+  if (parsed.error) return res.status(400).json({ error: parsed.error });
+  const { name, place, type, lat, lon, notes } = parsed.value;
+  db.prepare('UPDATE pins SET name=?, place=?, type=?, lat=?, lon=?, notes=? WHERE id=?').run(name, place, type, lat, lon, notes, id);
+  const updated = db.prepare(`
+    SELECT p.*, COUNT(ph.id) AS photo_count
+    FROM pins p LEFT JOIN photos ph ON ph.pin_id = p.id
+    WHERE p.id = ? GROUP BY p.id
+  `).get(id);
+  broadcast({ type: 'edit', pin: updated });
+  res.json(updated);
+});
+
 app.delete('/api/pins/:id', (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'Invalid id.' });
