@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import WorldMap from './WorldMap';
 import PinModal from './PinModal';
 import DropPinModal from './DropPinModal';
+import Login from './Login';
 import { nameToColor } from './colors';
 
 const LS_NAME_KEY = 'family-atlas-name';
@@ -76,7 +77,7 @@ function usePins() {
   return { pins, addPin, editPin, removePin, refreshPhotoCounts };
 }
 
-export default function App() {
+function Atlas({ onSignOut }) {
   const [name, setName] = useState(() => localStorage.getItem(LS_NAME_KEY) || '');
   const [filterPerson, setFilterPerson] = useState('all');
   const [pendingCoords, setPendingCoords] = useState(null);
@@ -183,23 +184,33 @@ export default function App() {
             + Drop a Pin
           </button>
 
-          {people.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <label style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: 600, color: 'rgba(212,168,67,0.55)', textTransform: 'uppercase', letterSpacing: 1.2 }}>
-                Show
-              </label>
-              <select value={filterPerson} onChange={e => setFilterPerson(e.target.value)} style={{
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(212,168,67,0.2)',
-                borderRadius: 8, padding: '7px 11px',
-                fontSize: 13, fontFamily: 'Inter, sans-serif',
-                color: '#f0e3c4',
-              }}>
-                <option value="all">Everyone</option>
-                {people.map(p => <option key={p} value={p}>{p}</option>)}
-              </select>
-            </div>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {people.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <label style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: 600, color: 'rgba(212,168,67,0.55)', textTransform: 'uppercase', letterSpacing: 1.2 }}>
+                  Show
+                </label>
+                <select value={filterPerson} onChange={e => setFilterPerson(e.target.value)} style={{
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(212,168,67,0.2)',
+                  borderRadius: 8, padding: '7px 11px',
+                  fontSize: 13, fontFamily: 'Inter, sans-serif',
+                  color: '#f0e3c4',
+                }}>
+                  <option value="all">Everyone</option>
+                  {people.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </div>
+            )}
+            <button onClick={onSignOut} title="Sign out" style={{
+              background: 'none', border: '1px solid rgba(212,168,67,0.2)', borderRadius: 8,
+              padding: '7px 11px', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+              fontFamily: 'Inter, sans-serif', color: 'rgba(240,227,196,0.5)',
+              textTransform: 'uppercase', letterSpacing: 1,
+            }}>
+              Sign out
+            </button>
+          </div>
         </div>
 
         {/* Globe */}
@@ -317,4 +328,27 @@ export default function App() {
       `}</style>
     </div>
   );
+}
+
+export default function App() {
+  // null = still checking the session, false = locked, true = signed in.
+  const [authed, setAuthed] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/auth/session')
+      .then(r => (r.ok ? r.json() : { authenticated: false }))
+      .then(d => { if (!cancelled) setAuthed(Boolean(d.authenticated)); })
+      .catch(() => { if (!cancelled) setAuthed(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  async function signOut() {
+    try { await fetch('/api/auth/logout', { method: 'POST' }); } catch { /* ignore network errors on logout */ }
+    setAuthed(false);
+  }
+
+  if (authed === null) return <div style={{ minHeight: '100vh', background: '#13100d' }} />;
+  if (!authed) return <Login onSuccess={() => setAuthed(true)} />;
+  return <Atlas onSignOut={signOut} />;
 }

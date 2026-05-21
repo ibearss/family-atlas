@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import crypto from 'crypto';
 import Database from 'better-sqlite3';
 import multer from 'multer';
 import { fileURLToPath } from 'url';
@@ -38,7 +39,8 @@ db.exec(`
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.use('/uploads', express.static(UPLOADS_DIR));
+// Photos are private to signed-in family. requireAuth is hoisted from below.
+app.use('/uploads', (req, res, next) => requireAuth(req, res, next), express.static(UPLOADS_DIR));
 
 const upload = multer({
   storage: multer.diskStorage({
@@ -70,6 +72,86 @@ function normalizePinInput(body = {}) {
   if (!Number.isFinite(lon) || lon < -180 || lon > 180) return { error: 'Invalid longitude.' };
   return { value: { name, place, type, lat, lon, notes } };
 }
+
+// --- Auth (shared family password, HMAC-signed session cookie) ---
+const SESSION_COOKIE = 'family_atlas_session';
+const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30; // 30 days - family devices stay signed in
+const IS_PROD = Boolean(process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT);
+let devSecret = null;
+
+function getPassword() {
+  const p = process.env.FAMILY_ATLAS_PASSWORD?.trim();
+  if (p) return p;
+  if (IS_PROD) throw new Error('FAMILY_ATLAS_PASSWORD is required in production.');
+  return 'family-demo';
+}
+function getSecret() {
+  const s = process.env.FAMILY_ATLAS_SESSION_SECRET?.trim();
+  if (s) return s;
+  if (IS_PROD) throw new Error('FAMILY_ATLAS_SESSION_SECRET is required in production.');
+  if (!devSecret) {
+    devSecret = crypto.randomBytes(32).toString('hex');
+    console.warn('[auth] FAMILY_ATLAS_SESSION_SECRET not set - using an ephemeral dev secret.');
+  }
+  return devSecret;
+}
+function safeEqual(a, b) {
+  const ab = Buffer.from(a), bb = Buffer.from(b);
+  return ab.length === bb.length && crypto.timingSafeEqual(ab, bb);
+}
+function makeSession() {
+  const payload = `${Date.now() + SESSION_TTL_MS}.${crypto.randomBytes(16).toString('hex')}`;
+  const sig = crypto.createHmac('sha256', getSecret()).update(payload).digest('hex');
+  return `${payload}.${sig}`;
+}
+function verifySession(value) {
+  if (!value) return false;
+  const parts = value.split('.');
+  if (parts.length !== 3) return false;
+  const [exp, nonce, sig] = parts;
+  const expiresAt = Number(exp);
+  if (!nonce || Number.isNaN(expiresAt) || expiresAt < Date.now()) return false;
+  const expected = crypto.createHmac('sha256', getSecret()).update(`${expiresAt}.${nonce}`).digest('hex');
+  return safeEqual(sig, expected);
+}
+function parseCookies(header) {
+  const out = {};
+  if (!header) return out;
+  for (const part of header.split(';')) {
+    const idx = part.indexOf('=');
+    if (idx === -1) continue;
+    out[part.slice(0, idx).trim()] = decodeURIComponent(part.slice(idx + 1).trim());
+  }
+  return out;
+}
+function isAuthed(req) {
+  return verifySession(parseCookies(req.headers.cookie)[SESSION_COOKIE]);
+}
+function setSessionCookie(res, value) {
+  res.setHeader('Set-Cookie', `${SESSION_COOKIE}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${Math.floor(SESSION_TTL_MS / 1000)}${IS_PROD ? '; Secure' : ''}`);
+}
+function clearSessionCookie(res) {
+  res.setHeader('Set-Cookie', `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${IS_PROD ? '; Secure' : ''}`);
+}
+function requireAuth(req, res, next) {
+  if (isAuthed(req)) return next();
+  res.status(401).json({ error: 'Authentication required.' });
+}
+
+app.post('/api/auth/login', (req, res) => {
+  const password = String(req.body?.password || '');
+  if (!safeEqual(password, getPassword())) return res.status(401).json({ error: 'Incorrect password.' });
+  setSessionCookie(res, makeSession());
+  res.json({ authenticated: true });
+});
+app.get('/api/auth/session', (req, res) => res.json({ authenticated: isAuthed(req) }));
+app.post('/api/auth/logout', (req, res) => { clearSessionCookie(res); res.json({ ok: true }); });
+
+// Gate every /api route below this line except the /api/auth/* endpoints above.
+app.use('/api', (req, res, next) => {
+  if (req.path.startsWith('/auth/')) return next();
+  requireAuth(req, res, next);
+});
 
 // --- API routes ---
 
