@@ -3,6 +3,10 @@ import WorldMap from './WorldMap';
 import PinModal from './PinModal';
 import DropPinModal from './DropPinModal';
 import Login from './Login';
+import TimelineView from './TimelineView';
+import SearchBar from './SearchBar';
+import PhotoGallery from './PhotoGallery';
+import Onboarding from './Onboarding';
 import { nameToColor } from './colors';
 
 const LS_NAME_KEY = 'family-atlas-name';
@@ -83,8 +87,26 @@ function Atlas({ onSignOut }) {
   const [pendingCoords, setPendingCoords] = useState(null);
   const [dropModalOpen, setDropModalOpen] = useState(false);
   const [selectedPin, setSelectedPin] = useState(null);
+  const [lowerView, setLowerView] = useState('list'); // 'list' | 'timeline'
+  const [galleryPhotos, setGalleryPhotos] = useState(null);
+  const [showOnboard, setShowOnboard] = useState(() => !localStorage.getItem('family-atlas-onboarded'));
 
   const { pins, addPin, editPin, removePin, refreshPhotoCounts } = usePins();
+
+  // Load a pin's photos on demand and open the lightbox gallery.
+  const openGallery = useCallback(async (pinId) => {
+    try {
+      const res = await fetch(`/api/pins/${pinId}/photos`);
+      if (!res.ok) return;
+      const photos = await res.json();
+      if (photos.length) setGalleryPhotos(photos);
+    } catch { /* ignore - gallery just will not open */ }
+  }, []);
+
+  function dismissOnboard() {
+    localStorage.setItem('family-atlas-onboarded', '1');
+    setShowOnboard(false);
+  }
 
   // Keep selectedPin in sync with the pins array (handles edits from other sessions)
   useEffect(() => {
@@ -184,6 +206,12 @@ function Atlas({ onSignOut }) {
             + Drop a Pin
           </button>
 
+          {pins.length > 0 && (
+            <div style={{ flex: '1 1 200px', maxWidth: 320, minWidth: 160 }}>
+              <SearchBar pins={pins} onSelect={setSelectedPin} />
+            </div>
+          )}
+
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             {people.length > 0 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -238,8 +266,25 @@ function Atlas({ onSignOut }) {
                 {visiblePins.length} {visiblePins.length === 1 ? 'entry' : 'entries'}
               </span>
               <div style={{ flex: 1, height: 1, background: 'rgba(212,168,67,0.12)' }} />
+              <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                {['list', 'timeline'].map(v => (
+                  <button key={v} onClick={() => setLowerView(v)} style={{
+                    fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: 600,
+                    textTransform: 'uppercase', letterSpacing: 1, cursor: 'pointer',
+                    padding: '5px 11px', borderRadius: 7,
+                    border: '1px solid ' + (lowerView === v ? 'rgba(212,168,67,0.45)' : 'rgba(212,168,67,0.15)'),
+                    background: lowerView === v ? 'rgba(212,168,67,0.14)' : 'transparent',
+                    color: lowerView === v ? '#d4a843' : 'rgba(240,227,196,0.4)',
+                  }}>
+                    {v === 'list' ? 'List' : 'Timeline'}
+                  </button>
+                ))}
+              </div>
             </div>
 
+            {lowerView === 'timeline' ? (
+              <TimelineView pins={visiblePins} onPinClick={setSelectedPin} />
+            ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 8 }}>
               {visiblePins.map(pin => {
                 const personColor = nameToColor(pin.name);
@@ -278,14 +323,17 @@ function Atlas({ onSignOut }) {
                         )}
                       </div>
                       {pin.photo_count > 0 && (
-                        <span style={{
-                          fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: 600,
-                          background: 'rgba(212,168,67,0.12)', color: '#d4a843',
-                          border: '1px solid rgba(212,168,67,0.25)', borderRadius: 10,
-                          padding: '2px 6px', flexShrink: 0,
-                        }}>
+                        <button
+                          onClick={e => { e.stopPropagation(); openGallery(pin.id); }}
+                          title="View photos"
+                          style={{
+                            fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: 600,
+                            background: 'rgba(212,168,67,0.12)', color: '#d4a843',
+                            border: '1px solid rgba(212,168,67,0.25)', borderRadius: 10,
+                            padding: '2px 6px', flexShrink: 0, cursor: 'pointer',
+                          }}>
                           📷 {pin.photo_count}
-                        </span>
+                        </button>
                       )}
                     </div>
                     <button onClick={e => { e.stopPropagation(); removePin(pin.id); }} style={{
@@ -300,6 +348,7 @@ function Atlas({ onSignOut }) {
                 );
               })}
             </div>
+            )}
           </div>
         )}
       </main>
@@ -322,6 +371,12 @@ function Atlas({ onSignOut }) {
           onEdit={handleEditPin}
         />
       )}
+
+      {galleryPhotos && (
+        <PhotoGallery photos={galleryPhotos} onClose={() => setGalleryPhotos(null)} />
+      )}
+
+      {showOnboard && <Onboarding onDismiss={dismissOnboard} />}
 
       <style>{`
         select option { background: #1a160f; color: #f0e3c4; }

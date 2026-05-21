@@ -7,17 +7,36 @@ const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 
 export default function WorldMap({ pins, onMapClick, pendingCoords, onPinClick }) {
   const mapRef = useRef();
+  const wrapRef = useRef(null);
   const [hoveredPin, setHoveredPin] = useState(null);
   const [spinning, setSpinning] = useState(true);
+  const [loaded, setLoaded] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [zoom, setZoom] = useState(1.5);
   const spinRef = useRef(null);
   const userInteracting = useRef(false);
+
+  // Track viewport width to tune sizing and touch behavior on small screens.
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') {
+      setIsMobile(typeof window !== 'undefined' && window.innerWidth < 640);
+      return;
+    }
+    const ro = new ResizeObserver(entries => {
+      const w = entries[0]?.contentRect?.width ?? window.innerWidth;
+      setIsMobile(w < 640);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   // Auto-spin
   const spinGlobe = useCallback(() => {
     const map = mapRef.current?.getMap();
     if (!map || !spinning || userInteracting.current) return;
-    const zoom = map.getZoom();
-    if (zoom < 3) {
+    const z = map.getZoom();
+    if (z < 3) {
       const center = map.getCenter();
       map.easeTo({ center: [center.lng - 0.4, center.lat], duration: 16, easing: n => n });
     }
@@ -35,15 +54,25 @@ export default function WorldMap({ pins, onMapClick, pendingCoords, onPinClick }
     });
   }, [onMapClick]);
 
+  // Pin radius scales gently with zoom so a dense cluster declutters when
+  // zoomed out and grows readable as you zoom in. Touch targets stay larger.
+  const baseSize = isMobile ? 14 : 16;
+  const pinSize = Math.round(Math.max(9, Math.min(baseSize, baseSize - (3 - zoom) * 2.2)));
+  const hitPad = isMobile ? 8 : 4;
+  const mapHeight = isMobile ? 'min(70vh, 460px)' : 560;
+
   return (
-    <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', boxShadow: '0 8px 40px rgba(0,0,0,0.4)' }}>
+    <div ref={wrapRef} style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', boxShadow: '0 8px 40px rgba(0,0,0,0.4)' }}>
       <Map
         ref={mapRef}
         mapboxAccessToken={TOKEN}
         initialViewState={{ longitude: 10, latitude: 20, zoom: 1.5 }}
-        style={{ width: '100%', height: 560 }}
+        style={{ width: '100%', height: mapHeight }}
         mapStyle="mapbox://styles/mapbox/satellite-streets-v12"
         projection="globe"
+        touchZoomRotate={true}
+        touchPitch={false}
+        dragRotate={!isMobile}
         fog={{
           range: [0.5, 10],
           color: '#242b4b',
@@ -53,6 +82,8 @@ export default function WorldMap({ pins, onMapClick, pendingCoords, onPinClick }
           'star-intensity': 0.8,
         }}
         onClick={handleMapClick}
+        onLoad={() => setLoaded(true)}
+        onZoom={e => setZoom(e.viewState.zoom)}
         cursor="crosshair"
         onMouseDown={() => { userInteracting.current = true; }}
         onMouseUp={() => { userInteracting.current = false; }}
@@ -61,7 +92,7 @@ export default function WorldMap({ pins, onMapClick, pendingCoords, onPinClick }
         onTouchEnd={() => { userInteracting.current = false; }}
         onRender={() => spinGlobe()}
       >
-        <NavigationControl position="top-left" showCompass={true} showZoom={true} />
+        <NavigationControl position="top-left" showCompass={!isMobile} showZoom={true} />
 
         {/* Ghost pin for pending location */}
         {pendingCoords && (
@@ -77,29 +108,42 @@ export default function WorldMap({ pins, onMapClick, pendingCoords, onPinClick }
         )}
 
         {/* Pins */}
-        {pins.map(pin => (
-          <Marker
-            key={pin.id}
-            longitude={pin.lon}
-            latitude={pin.lat}
-            anchor="bottom"
-          >
-            <div
-              onMouseEnter={() => setHoveredPin(pin)}
-              onMouseLeave={() => setHoveredPin(null)}
-              onClick={e => { e.stopPropagation(); onPinClick?.(pin); }}
-              style={{
-                width: 16, height: 16, borderRadius: '50%',
-                background: nameToColor(pin.name),
-                border: '2.5px solid white',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
-                cursor: 'pointer',
-                transition: 'transform 0.15s',
-                transform: hoveredPin?.id === pin.id ? 'scale(1.4)' : 'scale(1)',
-              }}
-            />
-          </Marker>
-        ))}
+        {pins.map(pin => {
+          const active = hoveredPin?.id === pin.id;
+          return (
+            <Marker
+              key={pin.id}
+              longitude={pin.lon}
+              latitude={pin.lat}
+              anchor="center"
+            >
+              {/* Outer padding gives a larger touch/click target without growing the dot */}
+              <div
+                onMouseEnter={() => setHoveredPin(pin)}
+                onMouseLeave={() => setHoveredPin(null)}
+                onClick={e => { e.stopPropagation(); onPinClick?.(pin); }}
+                style={{
+                  padding: hitPad,
+                  margin: -hitPad,
+                  cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <div
+                  style={{
+                    width: pinSize, height: pinSize, borderRadius: '50%',
+                    background: nameToColor(pin.name),
+                    border: '2.5px solid white',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
+                    transition: 'transform 0.15s, width 0.2s, height 0.2s',
+                    transform: active ? 'scale(1.5)' : 'scale(1)',
+                    zIndex: active ? 2 : 1,
+                  }}
+                />
+              </div>
+            </Marker>
+          );
+        })}
 
         {/* Tooltip popup */}
         {hoveredPin && (
@@ -114,7 +158,7 @@ export default function WorldMap({ pins, onMapClick, pendingCoords, onPinClick }
           >
             <div style={{ fontFamily: 'EB Garamond, Georgia, serif', lineHeight: 1.5, padding: '2px 4px' }}>
               <strong style={{ color: '#d4a843', fontSize: 15 }}>{hoveredPin.name}</strong>
-              <span style={{ color: 'rgba(240,227,196,0.4)' }}> — </span>
+              <span style={{ color: 'rgba(240,227,196,0.4)' }}> - </span>
               <span style={{ fontSize: 14, color: '#f0e3c4' }}>{hoveredPin.place}</span>
               <div style={{ fontSize: 10, color: 'rgba(240,227,196,0.4)', fontFamily: 'Inter, sans-serif', textTransform: 'uppercase', letterSpacing: '0.8px', marginTop: 3 }}>
                 {hoveredPin.type}
@@ -123,6 +167,28 @@ export default function WorldMap({ pins, onMapClick, pendingCoords, onPinClick }
           </Popup>
         )}
       </Map>
+
+      {/* Loading veil while the globe initializes */}
+      {!loaded && (
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 6,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          gap: 16, background: 'radial-gradient(circle at 50% 40%, #1c1812, #0a0a12)',
+        }}>
+          <div style={{
+            width: 34, height: 34, borderRadius: '50%',
+            border: '2px solid rgba(212,168,67,0.25)',
+            borderTopColor: '#d4a843',
+            animation: 'fa-spin 0.8s linear infinite',
+          }} />
+          <div style={{
+            fontFamily: 'EB Garamond, serif', fontStyle: 'italic',
+            fontSize: 15, color: 'rgba(240,227,196,0.5)', letterSpacing: 0.5,
+          }}>
+            Charting the globe...
+          </div>
+        </div>
+      )}
 
       {/* Spin toggle */}
       <button
@@ -143,6 +209,9 @@ export default function WorldMap({ pins, onMapClick, pendingCoords, onPinClick }
         @keyframes pulse {
           0%, 100% { transform: scale(1); opacity: 0.9; }
           50% { transform: scale(1.3); opacity: 0.6; }
+        }
+        @keyframes fa-spin {
+          to { transform: rotate(360deg); }
         }
         .mapboxgl-popup-content {
           background: rgba(20,16,12,0.95) !important;
