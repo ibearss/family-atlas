@@ -1,20 +1,21 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { nameToColor } from './colors';
+import { theme, panel, button, chip } from './theme';
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 
 const iStyle = {
-  background: 'rgba(255,255,255,0.05)',
-  border: '1px solid rgba(212,168,67,0.2)',
-  borderRadius: 8, padding: '9px 11px',
-  fontSize: 13, fontFamily: 'Inter, sans-serif',
-  color: '#f0e3c4', width: '100%', boxSizing: 'border-box',
+  background: theme.white,
+  border: theme.outline,
+  borderRadius: theme.radiusSm, padding: '9px 11px',
+  fontSize: 14, fontFamily: theme.body, fontWeight: 700,
+  color: theme.ink, width: '100%', boxSizing: 'border-box',
 };
 
 const labelStyle = {
   display: 'flex', flexDirection: 'column', gap: 5,
-  fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: 600,
-  color: 'rgba(212,168,67,0.55)', textTransform: 'uppercase', letterSpacing: 1.2,
+  fontFamily: theme.body, fontSize: 11, fontWeight: 900,
+  color: theme.ink, textTransform: 'uppercase', letterSpacing: 1,
 };
 
 export default function PinModal({ pin, onClose, onPhotoChange, onDelete, onEdit }) {
@@ -146,35 +147,28 @@ export default function PinModal({ pin, onClose, onPhotoChange, onDelete, onEdit
         position: 'fixed', top: '50%', left: '50%',
         transform: 'translate(-50%, -50%)',
         zIndex: 201,
-        background: '#1a160f',
-        border: `1px solid ${pinColor}33`,
+        ...panel(),
         borderRadius: 16,
         width: '92%', maxWidth: 660,
         maxHeight: '88vh',
         display: 'flex', flexDirection: 'column',
-        boxShadow: `0 24px 80px rgba(0,0,0,0.8), 0 0 0 1px ${pinColor}22`,
+        boxShadow: theme.shadowLg,
         overflow: 'hidden',
       }}>
         {/* Header */}
-        <div style={{ padding: '22px 24px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
+        <div style={{ padding: '22px 24px 16px', borderBottom: `3px solid ${theme.ink}`, flexShrink: 0 }}>
           {isEditing ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                <span style={{ fontFamily: 'EB Garamond, serif', fontSize: 16, color: '#d4a843', fontWeight: 600 }}>Edit Pin</span>
+                <span style={{ fontFamily: theme.display, fontSize: 24, color: theme.ink, letterSpacing: 0.5 }}>Edit Pin</span>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button onClick={cancelEditing} style={{
-                    padding: '5px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600,
-                    fontFamily: 'Inter, sans-serif',
-                    background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)',
-                    color: 'rgba(240,227,196,0.5)', cursor: 'pointer',
+                    ...button(theme.white), fontSize: 12, padding: '6px 14px',
                   }}>Cancel</button>
                   <button onClick={handleEditSave} disabled={!canSave} style={{
-                    padding: '5px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700,
-                    fontFamily: 'Inter, sans-serif', border: 'none',
+                    ...button(canSave ? theme.blue : theme.white), fontSize: 12, padding: '6px 14px',
                     cursor: canSave ? 'pointer' : 'not-allowed',
-                    background: canSave ? 'linear-gradient(135deg, #c9a84c, #8b6030)' : 'rgba(255,255,255,0.07)',
-                    color: canSave ? '#13100d' : 'rgba(240,227,196,0.25)',
-                    transition: 'all 0.2s',
+                    color: canSave ? theme.white : theme.inkFaint,
                   }}>
                     {saving ? 'Saving...' : 'Save Changes'}
                   </button>
@@ -199,40 +193,41 @@ export default function PinModal({ pin, onClose, onPhotoChange, onDelete, onEdit
                   {editSuggestions.length > 0 && (
                     <div style={{
                       position: 'absolute', top: '100%', left: 0, right: 0,
-                      background: '#1e1810', border: '1px solid rgba(212,168,67,0.3)',
-                      borderTop: 'none', borderRadius: '0 0 8px 8px',
+                      background: theme.white, border: theme.outline,
+                      borderTop: 'none', borderRadius: '0 0 10px 10px',
                       zIndex: 10, maxHeight: 180, overflowY: 'auto',
-                      boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
+                      boxShadow: theme.shadowSm,
                     }}>
                       {editSuggestions.map(f => (
                         <div
                           key={f.id}
                           onMouseDown={() => pickEditSuggestion(f)}
-                          style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.04)' }}
-                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(212,168,67,0.1)'}
+                          style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: `2px solid ${theme.ink}` }}
+                          onMouseEnter={e => e.currentTarget.style.background = theme.yellow}
                           onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                         >
-                          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 500, color: '#f0e3c4' }}>{f.text}</div>
-                          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, color: 'rgba(240,227,196,0.4)', marginTop: 2 }}>{f.place_name}</div>
+                          <div style={{ fontFamily: theme.body, fontSize: 13, fontWeight: 800, color: theme.ink }}>{f.text}</div>
+                          <div style={{ fontFamily: theme.body, fontSize: 11, fontWeight: 700, color: theme.inkSoft, marginTop: 2 }}>{f.place_name}</div>
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
-                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, color: 'rgba(240,227,196,0.2)', marginTop: 2 }}>
-                  {editCoords.lat}°, {editCoords.lon}° — select from suggestions to update location
+                <div style={{ fontFamily: theme.body, fontSize: 11, fontWeight: 700, color: theme.inkSoft, marginTop: 2 }}>
+                  {editCoords.lat}°, {editCoords.lon}° - select from suggestions to update location
                 </div>
               </label>
 
               <label style={labelStyle}>
                 Type
-                <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(212,168,67,0.25)' }}>
+                <div style={{ display: 'flex', borderRadius: theme.radiusSm, overflow: 'hidden', border: theme.outline }}>
                   {['home', 'travel'].map(t => (
                     <button key={t} type="button" onClick={() => setEditType(t)} style={{
-                      flex: 1, padding: '7px 14px', fontSize: 12, fontWeight: 600,
-                      fontFamily: 'Inter, sans-serif', border: 'none', cursor: 'pointer',
-                      background: editType === t ? (t === 'home' ? '#a02828' : '#1a5c9a') : 'transparent',
-                      color: editType === t ? 'white' : 'rgba(240,227,196,0.45)',
+                      flex: 1, padding: '8px 14px', fontSize: 13, fontWeight: 900,
+                      fontFamily: theme.body, border: 'none', cursor: 'pointer',
+                      borderRight: t === 'home' ? `3px solid ${theme.ink}` : 'none',
+                      background: editType === t ? (t === 'home' ? theme.red : theme.blue) : theme.white,
+                      color: editType === t ? theme.white : theme.inkSoft,
                       transition: 'all 0.15s',
                     }}>
                       {t === 'home' ? '🏠 Home' : '✈ Travel'}
@@ -247,7 +242,7 @@ export default function PinModal({ pin, onClose, onPhotoChange, onDelete, onEdit
                   value={editNotes}
                   onChange={e => setEditNotes(e.target.value)}
                   rows={2}
-                  style={{ ...iStyle, resize: 'vertical', fontFamily: 'EB Garamond, serif', fontSize: 14, lineHeight: 1.5 }}
+                  style={{ ...iStyle, resize: 'vertical', fontSize: 14, lineHeight: 1.5 }}
                 />
               </label>
             </div>
@@ -256,24 +251,25 @@ export default function PinModal({ pin, onClose, onPhotoChange, onDelete, onEdit
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{
                   width: 42, height: 42, borderRadius: '50%',
-                  background: `${pinColor}20`, border: `2px solid ${pinColor}`,
+                  background: pinColor, border: theme.outline,
+                  boxShadow: theme.shadowSm,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0,
                 }}>
                   {pin.type === 'home' ? '🏠' : '✈'}
                 </div>
                 <div>
-                  <h2 style={{ fontFamily: 'EB Garamond, serif', fontSize: 24, fontWeight: 700, color: '#d4a843', margin: 0, lineHeight: 1.2 }}>
+                  <h2 style={{ fontFamily: theme.display, fontSize: 30, color: theme.ink, margin: 0, lineHeight: 1.1, letterSpacing: 0.5 }}>
                     {pin.name}
                   </h2>
-                  <p style={{ fontFamily: 'EB Garamond, serif', fontStyle: 'italic', color: 'rgba(240,227,196,0.65)', fontSize: 16, margin: '3px 0 0' }}>
+                  <p style={{ fontFamily: theme.body, fontWeight: 800, color: theme.ink, fontSize: 16, margin: '3px 0 0' }}>
                     {pin.place}
                   </p>
                   {pin.notes && (
-                    <p style={{ fontFamily: 'EB Garamond, serif', fontSize: 15, color: 'rgba(240,227,196,0.55)', margin: '6px 0 0', lineHeight: 1.5, fontStyle: 'italic' }}>
+                    <p style={{ fontFamily: theme.body, fontWeight: 700, fontSize: 15, color: theme.inkSoft, margin: '6px 0 0', lineHeight: 1.5 }}>
                       "{pin.notes}"
                     </p>
                   )}
-                  <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, color: 'rgba(240,227,196,0.22)', margin: '6px 0 0', letterSpacing: 0.5 }}>
+                  <p style={{ fontFamily: theme.body, fontWeight: 800, fontSize: 11, color: theme.inkFaint, margin: '6px 0 0', letterSpacing: 0.5 }}>
                     {pin.lat}° {pin.lat >= 0 ? 'N' : 'S'}, {Math.abs(pin.lon)}° {pin.lon >= 0 ? 'E' : 'W'}
                   </p>
                 </div>
@@ -281,38 +277,25 @@ export default function PinModal({ pin, onClose, onPhotoChange, onDelete, onEdit
 
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8, flexShrink: 0 }}>
                 <button onClick={onClose} style={{
-                  background: 'none', border: 'none', color: 'rgba(240,227,196,0.3)',
-                  cursor: 'pointer', fontSize: 26, lineHeight: 1, padding: 4,
-                  transition: 'color 0.15s',
+                  background: theme.white, border: theme.outline, color: theme.ink,
+                  cursor: 'pointer', fontSize: 22, lineHeight: 1, padding: '2px 9px',
+                  borderRadius: theme.radiusSm, boxShadow: theme.shadowSm,
+                  fontFamily: theme.body, fontWeight: 900,
                 }}
-                  onMouseEnter={e => e.target.style.color = '#f0e3c4'}
-                  onMouseLeave={e => e.target.style.color = 'rgba(240,227,196,0.3)'}
                 >×</button>
                 <div style={{ display: 'flex', gap: 6 }}>
                   {onEdit && (
                     <button onClick={startEditing} style={{
-                      background: 'rgba(212,168,67,0.08)', border: '1px solid rgba(212,168,67,0.25)',
-                      color: 'rgba(212,168,67,0.6)', cursor: 'pointer',
-                      borderRadius: 6, padding: '4px 10px',
-                      fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 600,
-                      letterSpacing: 0.5, transition: 'all 0.15s',
+                      ...button(theme.yellow), fontSize: 12, padding: '5px 12px',
                     }}
-                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(212,168,67,0.18)'; e.currentTarget.style.color = '#d4a843'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(212,168,67,0.08)'; e.currentTarget.style.color = 'rgba(212,168,67,0.6)'; }}
                     >
                       Edit
                     </button>
                   )}
                   {onDelete && (
                     <button onClick={() => onDelete(pin.id)} style={{
-                      background: 'rgba(200,50,50,0.1)', border: '1px solid rgba(200,50,50,0.3)',
-                      color: 'rgba(220,80,80,0.7)', cursor: 'pointer',
-                      borderRadius: 6, padding: '4px 10px',
-                      fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 600,
-                      letterSpacing: 0.5, transition: 'all 0.15s',
+                      ...button(theme.red), color: theme.white, fontSize: 12, padding: '5px 12px',
                     }}
-                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(200,50,50,0.25)'; e.currentTarget.style.color = '#e05050'; e.currentTarget.style.borderColor = 'rgba(200,50,50,0.6)'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(200,50,50,0.1)'; e.currentTarget.style.color = 'rgba(220,80,80,0.7)'; e.currentTarget.style.borderColor = 'rgba(200,50,50,0.3)'; }}
                     >
                       Delete
                     </button>
@@ -323,7 +306,7 @@ export default function PinModal({ pin, onClose, onPhotoChange, onDelete, onEdit
           )}
         </div>
 
-        {/* Body — photos */}
+        {/* Body - photos */}
         <div style={{ overflowY: 'auto', padding: '20px 24px 24px', flex: 1 }}>
           <div
             onDragOver={e => { e.preventDefault(); setDragging(true); }}
@@ -331,19 +314,19 @@ export default function PinModal({ pin, onClose, onPhotoChange, onDelete, onEdit
             onDrop={handleDrop}
             onClick={() => fileRef.current.click()}
             style={{
-              border: `2px dashed ${dragging ? pinColor : 'rgba(212,168,67,0.25)'}`,
-              borderRadius: 10, padding: '18px', textAlign: 'center', cursor: 'pointer',
+              border: `3px dashed ${dragging ? theme.blue : theme.ink}`,
+              borderRadius: theme.radiusSm, padding: '18px', textAlign: 'center', cursor: 'pointer',
               marginBottom: photos.length ? 16 : 0,
-              background: dragging ? `${pinColor}10` : 'rgba(255,255,255,0.02)',
+              background: dragging ? theme.yellow : theme.white,
               transition: 'all 0.15s',
             }}
           >
             <input ref={fileRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handleFileChange} />
             <div style={{ fontSize: 28, marginBottom: 6 }}>{uploading ? '⏳' : '📷'}</div>
-            <div style={{ fontFamily: 'EB Garamond, serif', fontSize: 16, color: uploading ? '#d4a843' : 'rgba(240,227,196,0.5)' }}>
+            <div style={{ fontFamily: theme.body, fontWeight: 900, fontSize: 16, color: uploading ? theme.blue : theme.ink }}>
               {uploading ? 'Uploading...' : 'Drop photos here or click to browse'}
             </div>
-            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: 'rgba(240,227,196,0.25)', marginTop: 4 }}>
+            <div style={{ fontFamily: theme.body, fontWeight: 700, fontSize: 11, color: theme.inkSoft, marginTop: 4 }}>
               JPG, PNG, HEIC · up to 20 MB each
             </div>
           </div>
@@ -351,7 +334,7 @@ export default function PinModal({ pin, onClose, onPhotoChange, onDelete, onEdit
           {photos.length > 0 && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 8 }}>
               {photos.map(photo => (
-                <div key={photo.id} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', aspectRatio: '4/3', background: '#0d0b07', cursor: 'zoom-in' }}
+                <div key={photo.id} style={{ position: 'relative', borderRadius: theme.radiusSm, overflow: 'hidden', aspectRatio: '4/3', background: theme.white, border: theme.outline, boxShadow: theme.shadowSm, cursor: 'zoom-in' }}
                   onClick={() => setLightbox(photo)}>
                   <img
                     src={`/uploads/${photo.filename}`}
@@ -364,14 +347,12 @@ export default function PinModal({ pin, onClose, onPhotoChange, onDelete, onEdit
                     onClick={e => { e.stopPropagation(); handleDeletePhoto(photo.id); }}
                     style={{
                       position: 'absolute', top: 5, right: 5,
-                      width: 22, height: 22, borderRadius: '50%',
-                      background: 'rgba(0,0,0,0.75)', border: '1px solid rgba(255,255,255,0.15)',
-                      color: 'rgba(255,255,255,0.8)', cursor: 'pointer', fontSize: 14,
+                      width: 24, height: 24, borderRadius: '50%',
+                      background: theme.red, border: theme.outline,
+                      color: theme.white, cursor: 'pointer', fontSize: 14,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      lineHeight: 1, padding: 0, transition: 'background 0.15s',
+                      lineHeight: 1, padding: 0, fontFamily: theme.body, fontWeight: 900,
                     }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(200,50,50,0.9)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,0,0,0.75)'}
                   >×</button>
                 </div>
               ))}
@@ -379,8 +360,8 @@ export default function PinModal({ pin, onClose, onPhotoChange, onDelete, onEdit
           )}
 
           {photos.length === 0 && !uploading && (
-            <p style={{ textAlign: 'center', fontFamily: 'EB Garamond, serif', fontStyle: 'italic', color: 'rgba(240,227,196,0.2)', fontSize: 15, marginTop: 12 }}>
-              No photos yet — add the first one above
+            <p style={{ textAlign: 'center', fontFamily: theme.body, fontWeight: 800, color: theme.inkSoft, fontSize: 15, marginTop: 12 }}>
+              No photos yet - add the first one above
             </p>
           )}
         </div>
@@ -394,19 +375,19 @@ export default function PinModal({ pin, onClose, onPhotoChange, onDelete, onEdit
           <img
             src={`/uploads/${lightbox.filename}`}
             alt={lightbox.original_name}
-            style={{ maxWidth: '92vw', maxHeight: '90vh', objectFit: 'contain', borderRadius: 4, boxShadow: '0 8px 60px rgba(0,0,0,0.8)' }}
+            style={{ maxWidth: '92vw', maxHeight: '90vh', objectFit: 'contain', borderRadius: theme.radiusSm, border: theme.outlineThick, boxShadow: theme.shadowLg }}
             onClick={e => e.stopPropagation()}
           />
           <button
             onClick={() => setLightbox(null)}
-            style={{ position: 'fixed', top: 18, right: 22, background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', fontSize: 28, cursor: 'pointer', borderRadius: 6, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            style={{ position: 'fixed', top: 18, right: 22, background: theme.red, border: theme.outline, color: theme.white, fontSize: 24, cursor: 'pointer', borderRadius: theme.radiusSm, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: theme.body, fontWeight: 900, boxShadow: theme.shadowSm }}
           >×</button>
         </div>
       )}
 
       <style>{`
-        input::placeholder, textarea::placeholder { color: rgba(240,227,196,0.25); }
-        input:focus, textarea:focus { outline: none; border-color: rgba(212,168,67,0.5) !important; }
+        input::placeholder, textarea::placeholder { color: ${theme.inkFaint}; }
+        input:focus, textarea:focus { outline: none; border-color: ${theme.blue} !important; }
       `}</style>
     </>
   );

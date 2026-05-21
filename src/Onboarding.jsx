@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { theme, panel, button } from './theme';
 
 const STEPS = [
   {
@@ -51,34 +52,32 @@ export default function Onboarding({ onDismiss }) {
       <div
         onClick={e => e.stopPropagation()}
         style={{
+          ...panel(),
           width: '100%', maxWidth: 460,
           maxHeight: '88vh', overflowY: 'auto',
-          background: 'linear-gradient(160deg, rgba(28,24,18,0.98), rgba(16,13,9,0.98))',
-          border: '1px solid rgba(212,168,67,0.28)',
-          borderRadius: 16,
-          boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
+          boxShadow: theme.shadowLg,
           padding: 'clamp(24px, 5vw, 38px)',
           animation: 'fa-onb-rise 0.3s ease',
         }}
       >
         <div style={{
-          fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: 600,
+          fontFamily: theme.body, fontSize: 11, fontWeight: 800,
           letterSpacing: 4, textTransform: 'uppercase',
-          color: '#8b7040', marginBottom: 8, textAlign: 'center',
+          color: theme.inkSoft, marginBottom: 8, textAlign: 'center',
         }}>
           Welcome
         </div>
         <h2 style={{
-          fontFamily: 'EB Garamond, serif', fontWeight: 700,
-          fontSize: 'clamp(28px, 6vw, 40px)', color: '#d4a843',
-          margin: 0, textAlign: 'center', letterSpacing: 1.5,
-          textShadow: '0 2px 20px rgba(212,168,67,0.2)',
+          fontFamily: theme.display, fontWeight: 400,
+          fontSize: 'clamp(34px, 8vw, 50px)', color: theme.blue,
+          margin: 0, textAlign: 'center', letterSpacing: 1,
+          textShadow: '3px 3px 0 ' + theme.ink,
         }}>
           Family Atlas
         </h2>
         <p style={{
-          fontFamily: 'EB Garamond, serif', fontStyle: 'italic',
-          color: 'rgba(240,227,196,0.5)', fontSize: 15,
+          fontFamily: theme.body, fontWeight: 800,
+          color: theme.inkSoft, fontSize: 15,
           textAlign: 'center', margin: '6px 0 24px',
         }}>
           A few steps to start mapping your family.
@@ -92,21 +91,21 @@ export default function Onboarding({ onDismiss }) {
                 width: 40, height: 40, borderRadius: '50%',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 18,
-                background: 'rgba(212,168,67,0.1)',
-                border: '1px solid rgba(212,168,67,0.3)',
+                background: theme.yellow,
+                border: theme.outline, boxShadow: theme.shadowSm,
               }}>
                 {s.icon}
               </div>
               <div style={{ minWidth: 0 }}>
                 <div style={{
-                  fontFamily: 'EB Garamond, serif', fontWeight: 600,
-                  fontSize: 18, color: '#f0e3c4', lineHeight: 1.2,
+                  fontFamily: theme.display, fontWeight: 400,
+                  fontSize: 22, color: theme.ink, lineHeight: 1.2, letterSpacing: 0.5,
                 }}>
                   {s.title}
                 </div>
                 <div style={{
-                  fontFamily: 'Inter, sans-serif', fontSize: 13,
-                  color: 'rgba(240,227,196,0.55)', lineHeight: 1.5, marginTop: 3,
+                  fontFamily: theme.body, fontWeight: 700, fontSize: 13,
+                  color: theme.inkSoft, lineHeight: 1.5, marginTop: 3,
                 }}>
                   {s.body}
                 </div>
@@ -118,13 +117,10 @@ export default function Onboarding({ onDismiss }) {
         <button
           onClick={onDismiss}
           style={{
+            ...button(theme.red),
             marginTop: 28, width: '100%',
-            padding: '13px 18px', borderRadius: 10,
-            fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 700,
-            border: 'none', cursor: 'pointer',
-            background: 'linear-gradient(135deg, #c9a84c, #8b6030)',
-            color: '#13100d', letterSpacing: 0.5,
-            transition: 'opacity 0.15s',
+            padding: '13px 18px', fontSize: 16,
+            color: theme.white,
           }}
           onMouseEnter={e => (e.currentTarget.style.opacity = '0.85')}
           onMouseLeave={e => (e.currentTarget.style.opacity = '1')}

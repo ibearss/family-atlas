@@ -7,7 +7,8 @@ export function nameToColor(name) {
   const hue = Math.abs(hash) % 360;
   // Avoid red (used for home) and blue (used for travel) ranges
   const adjusted = (hue + 40) % 360;
-  return `hsl(${adjusted}, 65%, 60%)`;
+  // Punchy, saturated pop-art colors.
+  return `hsl(${adjusted}, 85%, 55%)`;
 }
 
 export function nameToColorDark(name) {

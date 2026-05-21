@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { nameToColor } from './colors';
+import { theme, panel, chip } from './theme';
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -73,10 +74,10 @@ export default function TimelineView({ pins, onPinClick }) {
         style={{
           textAlign: 'center',
           padding: '48px 16px',
-          fontFamily: 'EB Garamond, serif',
-          fontStyle: 'italic',
+          fontFamily: theme.body,
+          fontWeight: 800,
           fontSize: 16,
-          color: 'rgba(240,227,196,0.4)',
+          color: theme.inkSoft,
         }}
       >
         No moments to chart yet. Drop a pin to begin the journey.
@@ -102,19 +103,17 @@ export default function TimelineView({ pins, onPinClick }) {
           >
             <h3
               style={{
-                fontFamily: 'Inter, sans-serif',
-                fontSize: 11,
-                fontWeight: 600,
-                letterSpacing: 2,
-                textTransform: 'uppercase',
-                color: 'rgba(212,168,67,0.55)',
+                fontFamily: theme.display,
+                fontSize: 22,
+                letterSpacing: 0.5,
+                color: theme.ink,
                 margin: 0,
                 whiteSpace: 'nowrap',
               }}
             >
               {group.label}
             </h3>
-            <div style={{ flex: 1, height: 1, background: 'rgba(212,168,67,0.12)' }} />
+            <div style={{ flex: 1, height: 3, background: theme.ink, borderRadius: 2 }} />
           </div>
 
           {/* Entries with the connecting line */}
@@ -124,11 +123,12 @@ export default function TimelineView({ pins, onPinClick }) {
               aria-hidden="true"
               style={{
                 position: 'absolute',
-                left: 16,
+                left: 15,
                 top: 12,
                 bottom: 12,
-                width: 1,
-                background: 'rgba(212,168,67,0.18)',
+                width: 3,
+                background: theme.ink,
+                borderRadius: 2,
               }}
             />
 
@@ -141,14 +141,14 @@ export default function TimelineView({ pins, onPinClick }) {
                     aria-hidden="true"
                     style={{
                       position: 'absolute',
-                      left: 9,
+                      left: 8,
                       top: 16,
-                      width: 15,
-                      height: 15,
+                      width: 16,
+                      height: 16,
                       borderRadius: '50%',
-                      background: '#13100d',
-                      border: `2px solid ${personColor}`,
-                      boxShadow: `0 0 0 3px ${personColor}22`,
+                      background: personColor,
+                      border: `3px solid ${theme.ink}`,
+                      boxShadow: theme.shadowSm,
                       zIndex: 1,
                     }}
                   />
@@ -163,14 +163,12 @@ export default function TimelineView({ pins, onPinClick }) {
                       textAlign: 'left',
                       cursor: 'pointer',
                       padding: '12px 14px',
-                      borderRadius: 10,
-                      background: 'rgba(255,255,255,0.03)',
-                      border: `1px solid ${personColor}30`,
-                      color: '#f0e3c4',
-                      transition: 'background 0.15s',
+                      ...panel(),
+                      color: theme.ink,
+                      transition: 'transform 0.08s ease, box-shadow 0.08s ease',
                     }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.07)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
+                    onMouseEnter={e => { e.currentTarget.style.transform = 'translate(-1px,-1px)'; e.currentTarget.style.boxShadow = theme.shadowLg; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = 'translate(0,0)'; e.currentTarget.style.boxShadow = theme.shadow; }}
                   >
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
                       <span style={{ fontSize: 15, lineHeight: 1 }}>
@@ -178,21 +176,17 @@ export default function TimelineView({ pins, onPinClick }) {
                       </span>
                       <span
                         style={{
-                          fontFamily: 'EB Garamond, serif',
-                          fontSize: 16,
-                          fontWeight: 600,
-                          color: personColor,
+                          fontFamily: theme.body,
+                          fontSize: 17,
+                          fontWeight: 900,
+                          color: theme.ink,
                         }}
                       >
                         {pin.name}
                       </span>
                       <span
                         style={{
-                          fontFamily: 'Inter, sans-serif',
-                          fontSize: 10,
-                          letterSpacing: 1,
-                          textTransform: 'uppercase',
-                          color: 'rgba(240,227,196,0.3)',
+                          ...chip(personColor),
                           marginLeft: 'auto',
                         }}
                       >
@@ -202,10 +196,10 @@ export default function TimelineView({ pins, onPinClick }) {
 
                     <div
                       style={{
-                        fontFamily: 'EB Garamond, serif',
+                        fontFamily: theme.body,
                         fontSize: 14,
-                        fontStyle: 'italic',
-                        color: 'rgba(240,227,196,0.6)',
+                        fontWeight: 800,
+                        color: theme.ink,
                         marginTop: 3,
                       }}
                     >
@@ -215,9 +209,10 @@ export default function TimelineView({ pins, onPinClick }) {
                     {pin.notes && (
                       <div
                         style={{
-                          fontFamily: 'EB Garamond, serif',
+                          fontFamily: theme.body,
                           fontSize: 13,
-                          color: 'rgba(240,227,196,0.4)',
+                          fontWeight: 700,
+                          color: theme.inkSoft,
                           marginTop: 5,
                           lineHeight: 1.45,
                         }}
@@ -229,16 +224,9 @@ export default function TimelineView({ pins, onPinClick }) {
                     {pin.photo_count > 0 && (
                       <span
                         style={{
+                          ...chip(theme.yellow),
                           display: 'inline-block',
                           marginTop: 8,
-                          fontFamily: 'Inter, sans-serif',
-                          fontSize: 10,
-                          fontWeight: 600,
-                          background: 'rgba(212,168,67,0.12)',
-                          color: '#d4a843',
-                          border: '1px solid rgba(212,168,67,0.25)',
-                          borderRadius: 10,
-                          padding: '2px 7px',
                         }}
                       >
                         📷 {pin.photo_count}

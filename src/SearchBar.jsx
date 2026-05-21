@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { nameToColor } from './colors';
+import { theme, panel } from './theme';
 
 const MAX_RESULTS = 8;
 
@@ -44,20 +45,20 @@ export default function SearchBar({ pins, onSelect }) {
         onBlur={() => setTimeout(() => setOpen(false), 150)}
         placeholder="Search pins..."
         style={{
-          background: 'rgba(255,255,255,0.05)',
-          border: '1px solid rgba(212,168,67,0.2)',
-          borderRadius: 8, padding: '7px 11px',
-          fontSize: 13, fontFamily: 'Inter, sans-serif',
-          color: '#f0e3c4', width: '100%', boxSizing: 'border-box',
+          background: theme.white,
+          border: theme.outline,
+          borderRadius: theme.radiusSm, padding: '7px 11px',
+          fontSize: 13, fontFamily: theme.body, fontWeight: 800,
+          color: theme.ink, width: '100%', boxSizing: 'border-box',
         }}
       />
 
       {showDropdown && (
         <div style={{
-          position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4,
-          background: '#1e1810', border: '1px solid rgba(212,168,67,0.3)',
-          borderRadius: 8, zIndex: 50, maxHeight: 320, overflowY: 'auto',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
+          ...panel(),
+          position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 6,
+          zIndex: 50, maxHeight: 320, overflowY: 'auto',
+          overflow: 'hidden',
         }}>
           {matches.map(pin => {
             const personColor = nameToColor(pin.name);
@@ -68,28 +69,29 @@ export default function SearchBar({ pins, onSelect }) {
                 style={{
                   display: 'flex', alignItems: 'center', gap: 10,
                   padding: '9px 12px', cursor: 'pointer',
-                  borderBottom: '1px solid rgba(255,255,255,0.04)',
+                  borderBottom: '2px solid ' + theme.ink,
                 }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(212,168,67,0.1)'}
+                onMouseEnter={e => e.currentTarget.style.background = theme.yellow}
                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
               >
                 <div style={{
                   width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
-                  background: `${personColor}22`, border: `2px solid ${personColor}`,
+                  background: pin.type === 'home' ? theme.red : theme.blue,
+                  border: '2px solid ' + theme.ink,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13,
                 }}>
                   {pin.type === 'home' ? '🏠' : '✈'}
                 </div>
                 <div style={{ minWidth: 0 }}>
                   <div style={{
-                    fontFamily: 'EB Garamond, serif', fontSize: 14, fontWeight: 600,
+                    fontFamily: theme.body, fontSize: 14, fontWeight: 900,
                     color: personColor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                   }}>
                     {pin.name}
                   </div>
                   <div style={{
-                    fontFamily: 'EB Garamond, serif', fontSize: 12, fontStyle: 'italic',
-                    color: 'rgba(240,227,196,0.55)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                    fontFamily: theme.body, fontSize: 12, fontWeight: 700,
+                    color: theme.inkSoft, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                   }}>
                     {pin.place}
                   </div>
@@ -101,8 +103,8 @@ export default function SearchBar({ pins, onSelect }) {
       )}
 
       <style>{`
-        input::placeholder { color: rgba(240,227,196,0.25); }
-        input:focus { outline: none; border-color: rgba(212,168,67,0.5) !important; }
+        input::placeholder { color: rgba(22,22,29,0.4); }
+        input:focus { outline: none; border-width: 3px !important; border-color: ${theme.blue} !important; }
       `}</style>
     </div>
   );

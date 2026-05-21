@@ -1,24 +1,25 @@
 import { useState, useRef } from 'react';
+import { theme, panel, button } from './theme';
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 
 const iStyle = {
-  background: 'rgba(255,255,255,0.05)',
-  border: '1px solid rgba(212,168,67,0.2)',
-  borderRadius: 8, padding: '9px 11px',
-  fontSize: 13, fontFamily: 'Inter, sans-serif',
-  color: '#f0e3c4', width: '100%', boxSizing: 'border-box',
+  background: theme.white,
+  border: theme.outline,
+  borderRadius: theme.radiusSm, padding: '9px 11px',
+  fontSize: 14, fontFamily: theme.body, fontWeight: 700,
+  color: theme.ink, width: '100%', boxSizing: 'border-box',
 };
 
 const labelStyle = {
   display: 'flex', flexDirection: 'column', gap: 5,
-  fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: 600,
-  color: 'rgba(212,168,67,0.55)', textTransform: 'uppercase', letterSpacing: 1.2,
+  fontFamily: theme.body, fontSize: 11, fontWeight: 900,
+  color: theme.ink, textTransform: 'uppercase', letterSpacing: 1,
 };
 
-export default function DropPinModal({ coords, defaultName, onConfirm, onCancel }) {
+export default function DropPinModal({ coords, defaultName, defaultPlace, onConfirm, onCancel }) {
   const [name, setName] = useState(defaultName || '');
-  const [place, setPlace] = useState('');
+  const [place, setPlace] = useState(defaultPlace || '');
   const [pinType, setPinType] = useState('travel');
   const [notes, setNotes] = useState('');
   const [dropping, setDropping] = useState(false);
@@ -73,21 +74,20 @@ export default function DropPinModal({ coords, defaultName, onConfirm, onCancel 
         position: 'fixed', top: '50%', left: '50%',
         transform: 'translate(-50%, -50%)',
         zIndex: 201,
-        background: '#1a160f',
-        border: '1px solid rgba(212,168,67,0.25)',
+        ...panel(),
         borderRadius: 16,
         width: '92%', maxWidth: 420,
         padding: '24px',
-        boxShadow: '0 24px 80px rgba(0,0,0,0.8)',
+        boxShadow: theme.shadowLg,
       }}>
         <div style={{ marginBottom: 18 }}>
-          <h2 style={{ fontFamily: 'EB Garamond, serif', fontSize: 24, color: '#d4a843', margin: '0 0 4px', fontWeight: 700 }}>
+          <h2 style={{ fontFamily: theme.display, fontSize: 32, color: theme.ink, margin: '0 0 4px', letterSpacing: 0.5 }}>
             Drop a Pin
           </h2>
-          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, letterSpacing: 0.5 }}>
+          <div style={{ fontFamily: theme.body, fontWeight: 800, fontSize: 12, letterSpacing: 0.5 }}>
             {localCoords
-              ? <span style={{ color: 'rgba(240,227,196,0.3)' }}>{localCoords.lat}°, {localCoords.lon}°</span>
-              : <span style={{ color: 'rgba(240,227,196,0.2)', fontStyle: 'italic' }}>Search for a place to set location</span>
+              ? <span style={{ color: theme.inkSoft }}>{localCoords.lat}°, {localCoords.lon}°</span>
+              : <span style={{ color: theme.inkFaint }}>Search for a place to set location</span>
             }
           </div>
         </div>
@@ -117,21 +117,21 @@ export default function DropPinModal({ coords, defaultName, onConfirm, onCancel 
               {suggestions.length > 0 && (
                 <div style={{
                   position: 'absolute', top: '100%', left: 0, right: 0,
-                  background: '#1e1810', border: '1px solid rgba(212,168,67,0.3)',
-                  borderTop: 'none', borderRadius: '0 0 8px 8px',
+                  background: theme.white, border: theme.outline,
+                  borderTop: 'none', borderRadius: '0 0 10px 10px',
                   zIndex: 10, maxHeight: 220, overflowY: 'auto',
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
+                  boxShadow: theme.shadowSm,
                 }}>
                   {suggestions.map(f => (
                     <div
                       key={f.id}
                       onMouseDown={() => pickSuggestion(f)}
-                      style={{ padding: '9px 12px', cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.04)' }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(212,168,67,0.1)'}
+                      style={{ padding: '9px 12px', cursor: 'pointer', borderBottom: `2px solid ${theme.ink}` }}
+                      onMouseEnter={e => e.currentTarget.style.background = theme.yellow}
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                     >
-                      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 500, color: '#f0e3c4' }}>{f.text}</div>
-                      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, color: 'rgba(240,227,196,0.4)', marginTop: 2 }}>{f.place_name}</div>
+                      <div style={{ fontFamily: theme.body, fontSize: 13, fontWeight: 800, color: theme.ink }}>{f.text}</div>
+                      <div style={{ fontFamily: theme.body, fontSize: 11, fontWeight: 700, color: theme.inkSoft, marginTop: 2 }}>{f.place_name}</div>
                     </div>
                   ))}
                 </div>
@@ -141,13 +141,14 @@ export default function DropPinModal({ coords, defaultName, onConfirm, onCancel 
 
           <label style={labelStyle}>
             Type
-            <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(212,168,67,0.25)' }}>
+            <div style={{ display: 'flex', borderRadius: theme.radiusSm, overflow: 'hidden', border: theme.outline }}>
               {['home', 'travel'].map(t => (
                 <button key={t} type="button" onClick={() => setPinType(t)} style={{
-                  flex: 1, padding: '9px 14px', fontSize: 12, fontWeight: 600,
-                  fontFamily: 'Inter, sans-serif', border: 'none', cursor: 'pointer',
-                  background: pinType === t ? (t === 'home' ? '#a02828' : '#1a5c9a') : 'transparent',
-                  color: pinType === t ? 'white' : 'rgba(240,227,196,0.45)',
+                  flex: 1, padding: '9px 14px', fontSize: 13, fontWeight: 900,
+                  fontFamily: theme.body, border: 'none', cursor: 'pointer',
+                  borderRight: t === 'home' ? `3px solid ${theme.ink}` : 'none',
+                  background: pinType === t ? (t === 'home' ? theme.red : theme.blue) : theme.white,
+                  color: pinType === t ? theme.white : theme.inkSoft,
                   transition: 'all 0.15s',
                 }}>
                   {t === 'home' ? '🏠 Home' : '✈ Travel'}
@@ -157,32 +158,26 @@ export default function DropPinModal({ coords, defaultName, onConfirm, onCancel 
           </label>
 
           <label style={labelStyle}>
-            Memory / Note <span style={{ color: 'rgba(240,227,196,0.25)', fontWeight: 400 }}>(optional)</span>
+            Memory / Note <span style={{ color: theme.inkFaint, fontWeight: 700 }}>(optional)</span>
             <textarea
               value={notes}
               onChange={e => setNotes(e.target.value)}
               placeholder="'We got married here', 'Dad grew up two blocks away'..."
               rows={2}
-              style={{ ...iStyle, resize: 'vertical', minHeight: 60, fontFamily: 'EB Garamond, serif', fontSize: 14, lineHeight: 1.5 }}
+              style={{ ...iStyle, resize: 'vertical', minHeight: 60, fontSize: 14, lineHeight: 1.5 }}
             />
           </label>
 
           <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
             <button type="button" onClick={onCancel} style={{
-              flex: 1, padding: '10px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-              fontFamily: 'Inter, sans-serif',
-              background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-              color: 'rgba(240,227,196,0.5)', cursor: 'pointer',
+              ...button(theme.white), flex: 1, padding: '11px', fontSize: 14,
             }}>
               Cancel
             </button>
             <button type="submit" disabled={!canSubmit} style={{
-              flex: 2, padding: '10px', borderRadius: 8, fontSize: 13, fontWeight: 700,
-              fontFamily: 'Inter, sans-serif', border: 'none',
+              ...button(canSubmit ? theme.red : theme.white), flex: 2, padding: '11px', fontSize: 14,
               cursor: canSubmit ? 'pointer' : 'not-allowed',
-              background: canSubmit ? 'linear-gradient(135deg, #c9a84c, #8b6030)' : 'rgba(255,255,255,0.07)',
-              color: canSubmit ? '#13100d' : 'rgba(240,227,196,0.25)',
-              transition: 'all 0.2s',
+              color: canSubmit ? theme.white : theme.inkFaint,
             }}>
               {dropping ? 'Dropping...' : 'Drop Pin'}
             </button>
@@ -191,8 +186,8 @@ export default function DropPinModal({ coords, defaultName, onConfirm, onCancel 
       </div>
 
       <style>{`
-        input::placeholder, textarea::placeholder { color: rgba(240,227,196,0.25); }
-        input:focus, textarea:focus { outline: none; border-color: rgba(212,168,67,0.5) !important; }
+        input::placeholder, textarea::placeholder { color: ${theme.inkFaint}; }
+        input:focus, textarea:focus { outline: none; border-color: ${theme.blue} !important; }
       `}</style>
     </>
   );

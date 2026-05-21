@@ -7,7 +7,9 @@ import TimelineView from './TimelineView';
 import SearchBar from './SearchBar';
 import PhotoGallery from './PhotoGallery';
 import Onboarding from './Onboarding';
+import AddressSearch from './AddressSearch';
 import { nameToColor } from './colors';
+import { theme, panel, button, chip } from './theme';
 
 const LS_NAME_KEY = 'family-atlas-name';
 
@@ -90,6 +92,8 @@ function Atlas({ onSignOut }) {
   const [lowerView, setLowerView] = useState('list'); // 'list' | 'timeline'
   const [galleryPhotos, setGalleryPhotos] = useState(null);
   const [showOnboard, setShowOnboard] = useState(() => !localStorage.getItem('family-atlas-onboarded'));
+  const [focusCoords, setFocusCoords] = useState(null);
+  const [prefillPlace, setPrefillPlace] = useState('');
 
   const { pins, addPin, editPin, removePin, refreshPhotoCounts } = usePins();
 
@@ -127,6 +131,17 @@ function Atlas({ onSignOut }) {
   function closeDropModal() {
     setDropModalOpen(false);
     setPendingCoords(null);
+    setPrefillPlace('');
+  }
+
+  // Address search picked a place: fly the globe there and open Drop a Pin
+  // pre-filled with the place name and coordinates.
+  function handleAddressPick({ place, lat, lon }) {
+    const coords = { lat, lon };
+    setFocusCoords({ lat, lon, t: Date.now() }); // t forces a new object so repeat picks re-fly
+    setPendingCoords(coords);
+    setPrefillPlace(place);
+    setDropModalOpen(true);
   }
 
   async function handleDropConfirm(pinData) {
@@ -146,28 +161,28 @@ function Atlas({ onSignOut }) {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#13100d', color: '#f0e3c4' }}>
+    <div style={{ minHeight: '100vh', background: 'transparent', color: theme.ink }}>
 
       {/* Header */}
       <header style={{ textAlign: 'center', padding: 'clamp(28px, 5vw, 52px) 16px 20px' }}>
-        <div style={{ fontSize: 10, letterSpacing: 5, color: '#8b7040', fontFamily: 'Inter, sans-serif', fontWeight: 600, textTransform: 'uppercase', marginBottom: 10 }}>
+        <div style={{ fontSize: 12, letterSpacing: 4, color: theme.inkSoft, fontFamily: theme.body, fontWeight: 900, textTransform: 'uppercase', marginBottom: 10 }}>
           A shared family record
         </div>
         <h1 style={{
-          fontFamily: 'EB Garamond, serif',
-          fontSize: 'clamp(36px, 8vw, 76px)',
-          fontWeight: 700, color: '#d4a843', margin: 0, letterSpacing: 3,
-          textShadow: '0 2px 24px rgba(212,168,67,0.25)',
+          fontFamily: theme.display,
+          fontSize: 'clamp(44px, 9vw, 92px)',
+          fontWeight: 400, color: theme.red, margin: 0, letterSpacing: 3,
+          textShadow: `3px 3px 0 ${theme.ink}`,
         }}>
           Family Atlas
         </h1>
-        <p style={{ fontFamily: 'EB Garamond, serif', fontStyle: 'italic', color: 'rgba(240,227,196,0.45)', fontSize: 'clamp(14px, 2.5vw, 18px)', marginTop: 6 }}>
+        <p style={{ fontFamily: theme.body, fontWeight: 800, color: theme.inkSoft, fontSize: 'clamp(14px, 2.5vw, 18px)', marginTop: 8 }}>
           Where we live &amp; where we've wandered
         </p>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 16 }}>
-          <div style={{ height: 1, width: 50, background: 'linear-gradient(to right, transparent, #6b4f2a)' }} />
-          <div style={{ width: 5, height: 5, background: '#8b6535', transform: 'rotate(45deg)' }} />
-          <div style={{ height: 1, width: 50, background: 'linear-gradient(to left, transparent, #6b4f2a)' }} />
+          <div style={{ height: 3, width: 50, background: theme.ink, borderRadius: 2 }} />
+          <div style={{ width: 9, height: 9, background: theme.yellow, border: theme.outline, transform: 'rotate(45deg)' }} />
+          <div style={{ height: 3, width: 50, background: theme.ink, borderRadius: 2 }} />
         </div>
       </header>
 
@@ -182,9 +197,9 @@ function Atlas({ onSignOut }) {
               { n: pins.filter(p => p.type === 'home').length, label: 'Homes' },
               { n: pins.filter(p => p.type === 'travel').length, label: 'Trips' },
             ].map(({ n, label }) => (
-              <div key={label} style={{ textAlign: 'center' }}>
-                <div style={{ fontFamily: 'EB Garamond, serif', fontSize: 'clamp(24px, 5vw, 34px)', fontWeight: 700, color: '#d4a843', lineHeight: 1 }}>{n}</div>
-                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 9, letterSpacing: 1.5, color: 'rgba(240,227,196,0.35)', textTransform: 'uppercase', marginTop: 3 }}>{label}</div>
+              <div key={label} style={panel({ textAlign: 'center', padding: '12px 20px', minWidth: 84 })}>
+                <div style={{ fontFamily: theme.display, fontSize: 'clamp(28px, 5vw, 40px)', fontWeight: 400, color: theme.ink, lineHeight: 1, letterSpacing: 1 }}>{n}</div>
+                <div style={{ fontFamily: theme.body, fontSize: 10, letterSpacing: 1.5, fontWeight: 900, color: theme.inkSoft, textTransform: 'uppercase', marginTop: 4 }}>{label}</div>
               </div>
             ))}
           </div>
@@ -194,14 +209,10 @@ function Atlas({ onSignOut }) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
           <button
             onClick={() => setDropModalOpen(true)}
-            style={{
-              padding: '8px 18px', borderRadius: 8, fontSize: 13, fontWeight: 700,
-              fontFamily: 'Inter, sans-serif', border: 'none', cursor: 'pointer',
-              background: 'linear-gradient(135deg, #c9a84c, #8b6030)',
-              color: '#13100d', transition: 'opacity 0.15s',
-            }}
-            onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
-            onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+            style={button(theme.red)}
+            onMouseDown={e => { e.currentTarget.style.transform = 'translate(2px, 2px)'; e.currentTarget.style.boxShadow = '1px 1px 0 ' + theme.ink; }}
+            onMouseUp={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = theme.shadowSm; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = theme.shadowSm; }}
           >
             + Drop a Pin
           </button>
@@ -215,15 +226,15 @@ function Atlas({ onSignOut }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             {people.length > 0 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <label style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: 600, color: 'rgba(212,168,67,0.55)', textTransform: 'uppercase', letterSpacing: 1.2 }}>
+                <label style={{ fontFamily: theme.body, fontSize: 11, fontWeight: 900, color: theme.inkSoft, textTransform: 'uppercase', letterSpacing: 1.2 }}>
                   Show
                 </label>
                 <select value={filterPerson} onChange={e => setFilterPerson(e.target.value)} style={{
-                  background: 'rgba(255,255,255,0.05)',
-                  border: '1px solid rgba(212,168,67,0.2)',
-                  borderRadius: 8, padding: '7px 11px',
-                  fontSize: 13, fontFamily: 'Inter, sans-serif',
-                  color: '#f0e3c4',
+                  background: theme.paper,
+                  border: theme.outline,
+                  borderRadius: theme.radiusSm, padding: '7px 11px',
+                  fontSize: 13, fontFamily: theme.body, fontWeight: 800,
+                  color: theme.ink, boxShadow: theme.shadowSm, cursor: 'pointer',
                 }}>
                   <option value="all">Everyone</option>
                   {people.map(p => <option key={p} value={p}>{p}</option>)}
@@ -231,50 +242,54 @@ function Atlas({ onSignOut }) {
               </div>
             )}
             <button onClick={onSignOut} title="Sign out" style={{
-              background: 'none', border: '1px solid rgba(212,168,67,0.2)', borderRadius: 8,
-              padding: '7px 11px', fontSize: 11, fontWeight: 600, cursor: 'pointer',
-              fontFamily: 'Inter, sans-serif', color: 'rgba(240,227,196,0.5)',
-              textTransform: 'uppercase', letterSpacing: 1,
+              ...button(theme.white),
+              fontSize: 11, padding: '7px 13px', textTransform: 'uppercase', letterSpacing: 1,
             }}>
               Sign out
             </button>
           </div>
         </div>
 
+        {/* Address search */}
+        <div style={{ maxWidth: 460, margin: '0 auto 12px' }}>
+          <AddressSearch onPick={handleAddressPick} />
+        </div>
+
         {/* Globe */}
-        <WorldMap pins={visiblePins} onMapClick={handleMapClick} pendingCoords={pendingCoords} onPinClick={setSelectedPin} />
+        <WorldMap pins={visiblePins} onMapClick={handleMapClick} pendingCoords={pendingCoords} onPinClick={setSelectedPin} focusCoords={focusCoords} />
 
         {/* Legend */}
-        <div style={{ display: 'flex', gap: 16, marginTop: 10, justifyContent: 'center', flexWrap: 'wrap', fontFamily: 'EB Garamond, serif', color: 'rgba(240,227,196,0.4)', fontSize: 13 }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-            <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#e03030', display: 'inline-block' }} /> Home
+        <div style={{ display: 'flex', gap: 16, marginTop: 10, justifyContent: 'center', flexWrap: 'wrap', fontFamily: theme.body, fontWeight: 800, color: theme.inkSoft, fontSize: 13 }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ width: 12, height: 12, borderRadius: '50%', background: theme.red, border: '2px solid ' + theme.ink, display: 'inline-block' }} /> Home
           </span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-            <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#2a80cc', display: 'inline-block' }} /> Travel
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ width: 12, height: 12, borderRadius: '50%', background: theme.blue, border: '2px solid ' + theme.ink, display: 'inline-block' }} /> Travel
           </span>
-          <span style={{ fontStyle: 'italic' }}>Click globe or use button to drop a pin · scroll to zoom · drag to rotate</span>
+          <span style={{ color: theme.inkFaint }}>Click globe or use button to drop a pin · scroll to zoom · drag to rotate</span>
         </div>
 
         {/* Pin list */}
         {visiblePins.length > 0 && (
           <div style={{ marginTop: 40 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
-              <h2 style={{ fontFamily: 'EB Garamond, serif', fontSize: 'clamp(20px, 3vw, 26px)', fontWeight: 600, color: '#d4a843', margin: 0 }}>
+              <h2 style={{ fontFamily: theme.display, fontSize: 'clamp(24px, 3vw, 32px)', fontWeight: 400, color: theme.ink, margin: 0, letterSpacing: 1.5 }}>
                 {filterPerson === 'all' ? 'All Pins' : `${filterPerson}'s Pins`}
               </h2>
-              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, color: 'rgba(240,227,196,0.28)', letterSpacing: 1, textTransform: 'uppercase' }}>
+              <span style={chip(theme.yellow, { letterSpacing: 0.5, textTransform: 'uppercase' })}>
                 {visiblePins.length} {visiblePins.length === 1 ? 'entry' : 'entries'}
               </span>
-              <div style={{ flex: 1, height: 1, background: 'rgba(212,168,67,0.12)' }} />
-              <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+              <div style={{ flex: 1, height: 3, background: theme.ink, borderRadius: 2 }} />
+              <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                 {['list', 'timeline'].map(v => (
                   <button key={v} onClick={() => setLowerView(v)} style={{
-                    fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: 600,
+                    fontFamily: theme.body, fontSize: 11, fontWeight: 900,
                     textTransform: 'uppercase', letterSpacing: 1, cursor: 'pointer',
-                    padding: '5px 11px', borderRadius: 7,
-                    border: '1px solid ' + (lowerView === v ? 'rgba(212,168,67,0.45)' : 'rgba(212,168,67,0.15)'),
-                    background: lowerView === v ? 'rgba(212,168,67,0.14)' : 'transparent',
-                    color: lowerView === v ? '#d4a843' : 'rgba(240,227,196,0.4)',
+                    padding: '6px 13px', borderRadius: theme.radiusSm,
+                    border: theme.outline,
+                    background: lowerView === v ? theme.yellow : theme.white,
+                    color: theme.ink,
+                    boxShadow: lowerView === v ? theme.shadowSm : 'none',
                   }}>
                     {v === 'list' ? 'List' : 'Timeline'}
                   </button>
@@ -288,36 +303,36 @@ function Atlas({ onSignOut }) {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 8 }}>
               {visiblePins.map(pin => {
                 const personColor = nameToColor(pin.name);
+                const accent = pin.type === 'home' ? theme.red : theme.blue;
                 return (
                   <div key={pin.id}
                     onClick={() => setSelectedPin(pin)}
-                    style={{
+                    style={panel({
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '12px 14px', borderRadius: 10, cursor: 'pointer',
-                      background: 'rgba(255,255,255,0.03)',
-                      border: `1px solid ${personColor}30`,
-                      transition: 'all 0.15s',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.07)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+                      padding: '12px 14px', borderRadius: theme.radiusSm, cursor: 'pointer',
+                      borderLeft: `8px solid ${accent}`,
+                      transition: 'transform 0.08s ease, box-shadow 0.08s ease',
+                    })}
+                    onMouseEnter={e => { e.currentTarget.style.transform = 'translate(-1px, -1px)'; e.currentTarget.style.boxShadow = theme.shadowLg; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = theme.shadow; }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 11, minWidth: 0 }}>
                       <div style={{
                         width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
-                        background: `${personColor}22`, border: `2px solid ${personColor}`,
+                        background: personColor, border: theme.outline,
                         display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15,
                       }}>
                         {pin.type === 'home' ? '🏠' : '✈'}
                       </div>
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontFamily: 'EB Garamond, serif', fontSize: 15, fontWeight: 600, color: personColor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <div style={{ fontFamily: theme.body, fontSize: 15, fontWeight: 900, color: theme.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {pin.name}
                         </div>
-                        <div style={{ fontFamily: 'EB Garamond, serif', fontSize: 13, color: 'rgba(240,227,196,0.55)', fontStyle: 'italic', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <div style={{ fontFamily: theme.body, fontSize: 13, fontWeight: 700, color: theme.inkSoft, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {pin.place}
                         </div>
                         {pin.notes && (
-                          <div style={{ fontFamily: 'EB Garamond, serif', fontSize: 12, color: 'rgba(240,227,196,0.3)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <div style={{ fontFamily: theme.body, fontSize: 12, fontWeight: 600, color: theme.inkFaint, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {pin.notes}
                           </div>
                         )}
@@ -326,23 +341,18 @@ function Atlas({ onSignOut }) {
                         <button
                           onClick={e => { e.stopPropagation(); openGallery(pin.id); }}
                           title="View photos"
-                          style={{
-                            fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: 600,
-                            background: 'rgba(212,168,67,0.12)', color: '#d4a843',
-                            border: '1px solid rgba(212,168,67,0.25)', borderRadius: 10,
-                            padding: '2px 6px', flexShrink: 0, cursor: 'pointer',
-                          }}>
+                          style={chip(theme.yellow, { flexShrink: 0, cursor: 'pointer' })}>
                           📷 {pin.photo_count}
                         </button>
                       )}
                     </div>
                     <button onClick={e => { e.stopPropagation(); removePin(pin.id); }} style={{
                       background: 'none', border: 'none', cursor: 'pointer',
-                      color: 'rgba(240,227,196,0.15)', fontSize: 20, lineHeight: 1,
+                      color: theme.inkFaint, fontSize: 22, lineHeight: 1, fontWeight: 900,
                       padding: '0 4px', flexShrink: 0, transition: 'color 0.15s',
                     }}
-                      onMouseEnter={e => e.target.style.color = '#e05050'}
-                      onMouseLeave={e => e.target.style.color = 'rgba(240,227,196,0.15)'}
+                      onMouseEnter={e => e.target.style.color = theme.red}
+                      onMouseLeave={e => e.target.style.color = theme.inkFaint}
                     >×</button>
                   </div>
                 );
@@ -357,6 +367,7 @@ function Atlas({ onSignOut }) {
         <DropPinModal
           coords={pendingCoords}
           defaultName={name}
+          defaultPlace={prefillPlace}
           onConfirm={handleDropConfirm}
           onCancel={closeDropModal}
         />
@@ -379,7 +390,7 @@ function Atlas({ onSignOut }) {
       {showOnboard && <Onboarding onDismiss={dismissOnboard} />}
 
       <style>{`
-        select option { background: #1a160f; color: #f0e3c4; }
+        select option { background: ${theme.paper}; color: ${theme.ink}; }
       `}</style>
     </div>
   );
@@ -403,7 +414,7 @@ export default function App() {
     setAuthed(false);
   }
 
-  if (authed === null) return <div style={{ minHeight: '100vh', background: '#13100d' }} />;
+  if (authed === null) return <div style={{ minHeight: '100vh', background: 'transparent' }} />;
   if (!authed) return <Login onSuccess={() => setAuthed(true)} />;
   return <Atlas onSignOut={signOut} />;
 }

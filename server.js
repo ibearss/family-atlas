@@ -36,6 +36,14 @@ db.exec(`
   );
 `);
 
+// Migration: databases created before the notes column was added need it
+// backfilled. CREATE TABLE IF NOT EXISTS does not alter existing tables, so
+// add the column when missing (idempotent on every boot).
+const pinColumns = db.prepare('PRAGMA table_info(pins)').all().map(c => c.name);
+if (!pinColumns.includes('notes')) {
+  db.exec("ALTER TABLE pins ADD COLUMN notes TEXT NOT NULL DEFAULT ''");
+}
+
 const app = express();
 app.use(cors());
 app.use(express.json());

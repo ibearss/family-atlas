@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { theme, chip } from './theme';
 
 export default function PhotoGallery({ photos, startIndex = 0, onClose }) {
   const count = photos ? photos.length : 0;
@@ -45,7 +46,8 @@ export default function PhotoGallery({ photos, startIndex = 0, onClose }) {
         onClick={e => e.stopPropagation()}
         style={{
           maxWidth: '88vw', maxHeight: '86vh', objectFit: 'contain',
-          borderRadius: 4, boxShadow: '0 8px 60px rgba(0,0,0,0.8)', cursor: 'default',
+          borderRadius: theme.radiusSm, border: '4px solid ' + theme.ink,
+          background: theme.white, boxShadow: theme.shadowLg, cursor: 'default',
         }}
       />
 
@@ -55,8 +57,9 @@ export default function PhotoGallery({ photos, startIndex = 0, onClose }) {
         title="Close"
         style={{
           position: 'fixed', top: 18, right: 22,
-          background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white',
-          fontSize: 28, cursor: 'pointer', borderRadius: 6, width: 40, height: 40,
+          background: theme.white, border: theme.outline, color: theme.ink,
+          fontSize: 24, fontWeight: 900, cursor: 'pointer', borderRadius: '50%',
+          width: 44, height: 44, boxShadow: theme.shadowSm,
           display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
         }}
       >×</button>
@@ -69,8 +72,9 @@ export default function PhotoGallery({ photos, startIndex = 0, onClose }) {
             title="Previous"
             style={{
               position: 'fixed', top: '50%', left: 18, transform: 'translateY(-50%)',
-              background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white',
-              fontSize: 26, cursor: 'pointer', borderRadius: 6, width: 44, height: 44,
+              background: theme.white, border: theme.outline, color: theme.ink,
+              fontSize: 26, fontWeight: 900, cursor: 'pointer', borderRadius: '50%',
+              width: 48, height: 48, boxShadow: theme.shadowSm,
               display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
             }}
           >‹</button>
@@ -81,8 +85,9 @@ export default function PhotoGallery({ photos, startIndex = 0, onClose }) {
             title="Next"
             style={{
               position: 'fixed', top: '50%', right: 18, transform: 'translateY(-50%)',
-              background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white',
-              fontSize: 26, cursor: 'pointer', borderRadius: 6, width: 44, height: 44,
+              background: theme.white, border: theme.outline, color: theme.ink,
+              fontSize: 26, fontWeight: 900, cursor: 'pointer', borderRadius: '50%',
+              width: 48, height: 48, boxShadow: theme.shadowSm,
               display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
             }}
           >›</button>
@@ -91,10 +96,10 @@ export default function PhotoGallery({ photos, startIndex = 0, onClose }) {
 
       {/* Counter */}
       <div style={{
+        ...chip(theme.yellow),
         position: 'fixed', bottom: 22, left: '50%', transform: 'translateX(-50%)',
-        fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 600, letterSpacing: 1,
-        color: 'rgba(240,227,196,0.7)', background: 'rgba(0,0,0,0.4)',
-        border: '1px solid rgba(212,168,67,0.2)', borderRadius: 14, padding: '5px 14px',
+        fontSize: 13, letterSpacing: 1,
+        border: theme.outline, boxShadow: theme.shadowSm, padding: '5px 14px',
       }}>
         {index + 1} / {count}
       </div>
