@@ -4,5 +4,5 @@ buildCommand = "npm install --include=dev --no-audit --no-fund && npm run build"
 
 [deploy]
 startCommand = "npm start"
-healthcheckPath = "/api/pins"
+healthcheckPath = "/api/auth/session"
 restartPolicyType = "ON_FAILURE"
